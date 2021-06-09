@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
 import json
@@ -11,7 +11,6 @@ import os
 
 plt.style.use('ggplot')
 data = {}
-
 
 with open('data.json') as json_file:
     data = json.load(json_file)
@@ -44,11 +43,15 @@ def send_data(deput, message):
     prof = ''
     for i in deput['profissoes']:
         prof += i + " "
-    bot.reply_to(message, '**Nome:** '+ str(deput['nome'])+'\n'+\
-                          '**Partido:** '+ str(deput['partido'])+'\n'+\
-                          '**UF:** '+ str(deput['uf'])+'\n'+\
-                          '**Profissões:** '+ prof+'\n'+\
-                          '**Despesa Total:** '+ str(round(deput['Despesa_total'])))
+    bot.reply_to(message, '*Nome:* '+ str(deput['nome'])+'\n'+\
+                          '*Partido:* '+ str(deput['partido'])+'\n'+\
+                          '*UF:* '+ str(deput['uf'])+'\n'+\
+                          '*Profissões:* '+ prof+'\n'+\
+                          '*Salario Líquido: R$* '+ str(deput['salario']) +'\n'+\
+                          '*Auxilios: R$* '+ str(deput['auxilio']) +'\n'+\
+                          '*Despesa de Gabinete: R$* '+ str(round(deput['Despesa_total'])) + '\n'
+                          'Ficou insatisfeito com os gastos? Mande um email para ele: \n' + deput['email'] + '\n'
+                          'Ou ligue para o gabinete: ' + deput['telefone'])
 
 def gen_plot(deput):
     valores = deput['Despesa_categ']
@@ -76,7 +79,7 @@ def gen_plot(deput):
         print(desc)
         for d, v, c in zip(desc, value, cor):
             axs[1].bar(d, v, color = c, label = d)
-
+        axs[1].set_ylabel('R$')
         axs[1].axes.get_xaxis().set_visible(False)
 
         fig.subplots_adjust(bottom=0.35, wspace=0.3, hspace=0.3)
@@ -106,8 +109,8 @@ def gen_plot(deput):
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-	bot.reply_to(message, "Gostaria de stalkear um deputado?"+\
-                          "\nPara descobrir gastos e infos digite: /deputado <NOME>"+\
+	bot.reply_to(message, "Gostaria de stalkear um Deputado Federal?"+\
+                          "\nPara descobrir gastos e infos: /deputado <NOME>"+\
                           "\nPara lista de deputados: /lista <PARTIDO>"+\
                           "\nPara o mais gastão: /gastao"+\
                           "\nPara os que estão sem gastos declarados: /zeradinhos")
@@ -165,6 +168,11 @@ def consulta_deputado (message):
             d += data[i]['nome'] + ' [' + data[i]['partido'] + ' ]' + '\n'
     bot.reply_to(message, 'Deputados:\n' + d)
 
+@bot.message_handler(commands=['gatao'])
+def consulta_deputado (message):
+    img = requests.get("https://s.glbimg.com/po/tt/f/original/2012/12/19/aristocat.jpg")
+    bot.reply_to(message, "Por aqui não ha gatos, apenas gatunos")
+    bot.send_photo(message.chat.id, photo =img.content)
 
 
 bot.polling()

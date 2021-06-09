@@ -6,18 +6,72 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 from datetime import date
+from bs4 import BeautifulSoup
+import re
 
 header = { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.90 Safari/537.36' }
 url = "https://dadosabertos.camara.leg.br/api/v2/deputados/"
 
+url_page = "https://www.camara.leg.br/deputados/"
+
+get_remuneracao ="/remuneracao-deputado-detalhado?mesAno="
+
 data = {}
 
-def get_id_name ():
+phone = re.compile(r'(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})')
+
+decimal = re.compile(r'\d+\.\d+\,\d+')
+
+def get_data_from_page(id, MM, YY):
+    remun = True
+    auxilio = False
+    aux = 0
+    salario = "Sem Dados"
+    tel = "(XX) XXXX-XXXX"
+    page = requests.get(url_page + str(id))
+    soup = BeautifulSoup(page.text, 'html.parser')
+    for li_tag in soup.find_all('ul', {'class':'informacoes-deputado'}):
+        for span_tag in li_tag.find_all('li'):
+            if(not span_tag.text.find("Telefone")):
+                print(phone.findall(span_tag.text)[0][0]+phone.findall(span_tag.text)[0][1])
+                tel = phone.findall(span_tag.text)[0][0]+phone.findall(span_tag.text)[0][1]
+                break
+    if(MM <= 9):
+        MM = str(MM).zfill(2)
+    else:
+        MM = str(MM)
+    page = requests.get(url_page + str(id)+ get_remuneracao + MM + str(YY))
+    print(url_page + str(id)+ get_remuneracao + MM + str(YY))
+    soup = BeautifulSoup(page.text, 'html.parser')
+    for li_tag in soup.find_all('table', {'class':'table table-striped table-bordered col-md-12'}):
+        for span_tag in li_tag.find_all('tr'):
+            #print(span_tag.text)
+            if('a - Remuneração após Descontos Obrigatórios' in span_tag.text and remun):
+                text = decimal.findall(span_tag.text)
+                if(len(text) and float(text[0].replace(".","").replace(",","."))):
+                    #print (float(text[0].replace(".","").replace(",",".")))
+                    salario = float(text[0].replace(".","").replace(",","."))
+                    remun = False
+                    auxilio = True
+
+            if('b - Auxílios' in span_tag.text and auxilio):
+                text = decimal.findall(span_tag.text)
+                if(len(text) and float(text[0].replace(".","").replace(",","."))):
+                    #print (float(text[0].replace(".","").replace(",",".")))
+                    aux = float(text[0].replace(".","").replace(",","."))
+                    auxilio = False
+
+    return (tel, salario, aux)
+
+
+
+def get_id_name (MM, YY):
     r = requests.get(url, headers=header)
     if (r.status_code == 200):
         y = r.json()
         for i in y['dados'] :
-            data[i['id']] = {'nome': i['nome'], 'partido': i['siglaPartido'], 'uf':i['siglaUf'], 'foto':i['urlFoto']}
+            (t, s, a) = get_data_from_page(i['id'], MM, YY)
+            data[i['id']] = {'nome': i['nome'], 'partido': i['siglaPartido'], 'uf':i['siglaUf'], 'foto':i['urlFoto'], 'email': i['email'], 'telefone': t, 'salario': s, 'auxilio': a}
 
 def get_occup(id):
     query = "/profissoes"
@@ -57,9 +111,9 @@ def get_spend_for (id, MM, YY):
         return sum
 
 
-
-get_id_name ()
 today = date.today()
+get_id_name (today.month-1, today.year)
+
 for i in data:
     get_occup(i)
     get_spend_for (i, today.month-1 , today.year)
