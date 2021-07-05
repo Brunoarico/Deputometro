@@ -11,7 +11,7 @@ import os
 import datetime as date
 
 plt.style.use('ggplot')
-token = "1635697645:AAHhK3e25kTDNICCBw25iBuBNzC6-XBmqYw"
+token = ""
 data = {}
 
 with open('data.json') as json_file:
